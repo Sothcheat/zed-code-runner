@@ -75,25 +75,34 @@ echo "📝 Create runner.sh script.."
 cat > $CONFIG_DIR/runner.sh << 'EOF'
 #!/usr/bin/env bash
 set -e
+
+eel() { echo -e "$@"; }
+ee() { echo ""; }
+
 FILE="$1"
 STEM="${FILE%.*}"
+filename_ext=$(basename "$FILE")
+
 clear
 [ -z "$FILE" ] && echo "Error: No file" && exit 1
+
 case "$FILE" in
-    *.py) echo ">>> Running Python..."; python3 "$FILE";;
-    *.js) echo ">>> Running JavaScript..."; node "$FILE";;
-    *.dart) echo ">>> Running Dart..."; dart run "$FILE";;
-    *.java) echo ">>> Running Java..."; java "$FILE";;
-    *.go) echo ">>> Running Go..."; go run "$FILE";;
-    *.rb) echo ">>> Running Ruby..."; ruby "$FILE";;
-    *.cpp|*.cc) echo ">>> Compiling C++..."; g++ "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c++20 && ./"$STEM" && rm -f "$STEM";;
-    *.c) echo ">>> Compiling C..."; gcc "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c17 && ./"$STEM" && rm -f "$STEM";;
-    *.cs) echo ">>> Running C#..."; dotnet run;;
-    *.ts) echo ">>> Running TypeScript..."; ts-node "$FILE";;
-    *.php) echo ">>> Running PHP..."; php "$FILE";;
-    *) echo "Unsupported: $FILE"; exit 1;;
+    *.py) eel -e ">>> Running Python... | $filename_ext\n"; python3 "$FILE";;
+    *.js) eel ">>> Running JavaScript... | $filename_ext\n"; node "$FILE";;
+    *.dart) eel ">>> Running Dart... | $filename_ext\n"; dart run "$FILE";;
+    *.java) eel ">>> Running Java... | $filename_ext\n"; java "$FILE";;
+    *.go) eel ">>> Running Go... | $filename_ext\n"; go run "$FILE";;
+    *.rb) eel ">>> Running Ruby... | $filename_ext\n"; ruby "$FILE";;
+    *.cpp|*.cc) eel ">>> Compiling C++... | $filename_ext\n"; g++ "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c++20 && "$STEM" && rm -f "$STEM";;
+    *.c) eel ">>> Compiling C... | $filename_ext\n"; gcc "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c17 && "$STEM" && rm -f "$STEM";;
+    *.cs) eel ">>> Running C#... | $filename_ext\n"; dotnet run;;
+    *.ts) eel ">>> Running TypeScript... | $filename_ext\n"; ts-node "$FILE";;
+    *.php) eel ">>> Running PHP... | $filename_ext\n"; php "$FILE";;
+    *) eel "Unsupported: $FILE"; exit 1;;
 esac
-echo ""; echo "✅ Done!"
+
+ee
+eel "✅ Finished running code successfully."
 EOF
 
 # Make the script executable
