@@ -51,18 +51,18 @@ cat > "$TASKS_FILE" << 'EOF'
 [
   {
     "label": "Run File",
-    "command": "bash",
-    "args": [
-      "-c",
-      "FILE=\"$ZED_FILE\"; STEM=\"$ZED_STEM\"; set -e; clear; case \"$FILE\" in *.py) echo \">>> Running Python...\"; python3 \"$FILE\";; *.js) echo \">>> Running JavaScript (Node)...\"; node \"$FILE\";; *.dart) echo \">>> Running Dart...\"; dart run \"$FILE\";; *.java) echo \">>> Running Java (JIT compilation)...\"; java \"$FILE\";; *.go) echo \">>> Running Go...\"; go run \"$FILE\";; *.rb) echo \">>> Running Ruby...\"; ruby \"$FILE\";; *.cpp|*.cc) echo \">>> Compiling C++ (O2 Optimization)...\"; g++ \"$FILE\" -o \"$STEM\" -Wall -Wextra -O2 -std=c++20 && echo \">>> Running C++ executable...\" && ./\"$STEM\" && rm -f \"$STEM\";; *.c) echo \">>> Compiling C (O2 Optimization)...\"; gcc \"$FILE\" -o \"$STEM\" -Wall -Wextra -O2 -std=c17 && echo \">>> Running C executable...\" && ./\"$STEM\" && rm -f \"$STEM\";; *.cs) echo \">>> Running C# (.NET)...\"; dotnet run;; *.ts) echo \">>> Running TypeScript (ts-node)...\"; ts-node \"$FILE\";; *.php) echo \">>> Running PHP...\"; php \"$FILE\";; *) echo \"Unsupported file type\"; exit 1;; esac && echo \"\" && echo \"✅ Finished running code successfully.\""
-    ],
+    "command": "$HOME/.config/zed/runner.sh",
+    "args": ["$ZED_FILE"],
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
-    "reveal": "always",
+    "reveal": "always"
     "tags": ["code-runner-run"]
   }
 ]
 EOF
+
+# Make the script executable
+chmod +x ~/.config/zed/runner.sh
 
 # Verify tasks.json was created
 if [ -f "$TASKS_FILE" ] && [ -s "$TASKS_FILE" ]; then
@@ -72,6 +72,32 @@ else
     echo "❌ Failed to create tasks.json"
     exit 1
 fi
+
+echo ""
+echo "📝 Create runner.sh script.."
+cat > $CONFIG_DIR/runner.sh << 'EOF'
+#!/usr/bin/env bash
+set -e
+FILE="$1"
+STEM="${FILE%.*}"
+clear
+[ -z "$FILE" ] && echo "Error: No file" && exit 1
+case "$FILE" in
+    *.py) echo ">>> Running Python..."; python3 "$FILE";;
+    *.js) echo ">>> Running JavaScript..."; node "$FILE";;
+    *.dart) echo ">>> Running Dart..."; dart run "$FILE";;
+    *.java) echo ">>> Running Java..."; java "$FILE";;
+    *.go) echo ">>> Running Go..."; go run "$FILE";;
+    *.rb) echo ">>> Running Ruby..."; ruby "$FILE";;
+    *.cpp|*.cc) echo ">>> Compiling C++..."; g++ "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c++20 && ./"$STEM" && rm -f "$STEM";;
+    *.c) echo ">>> Compiling C..."; gcc "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c17 && ./"$STEM" && rm -f "$STEM";;
+    *.cs) echo ">>> Running C#..."; dotnet run;;
+    *.ts) echo ">>> Running TypeScript..."; ts-node "$FILE";;
+    *.php) echo ">>> Running PHP..."; php "$FILE";;
+    *) echo "Unsupported: $FILE"; exit 1;;
+esac
+echo ""; echo "✅ Done!"
+EOF
 
 echo ""
 echo "📝 Creating keymap.json..."
