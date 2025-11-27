@@ -5,7 +5,7 @@
 ## 🚀 Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/zed-code-runner/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
 ```
 
 That's it! Press `Ctrl+R` (or `Cmd+R` on Mac) to run any code file.
@@ -40,7 +40,7 @@ That's it! Press `Ctrl+R` (or `Cmd+R` on Mac) to run any code file.
 ### Automatic (Recommended)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/zed-code-runner/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
 ```
 
 ### Manual
@@ -265,7 +265,7 @@ By default, tasks run in the file's directory. To run from project root, modify 
 Just run the installer again:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yourusername/zed-code-runner/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
 ```
 
 ## 🗑️ Uninstalling
@@ -307,8 +307,8 @@ Inspired by your original `zed-runner.sh` script and VS Code's Code Runner exten
 
 ## 📧 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/zed-code-runner/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/zed-code-runner/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Sothcheat/zed-code-runner/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Sothcheat/zed-code-runner/discussions)
 
 ---
 
