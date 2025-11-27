@@ -5,7 +5,7 @@
 ## 🚀 Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
 ```
 
 That's it! Press `Ctrl+R` (or `Cmd+R` on Mac) to run any code file.
@@ -40,41 +40,39 @@ That's it! Press `Ctrl+R` (or `Cmd+R` on Mac) to run any code file.
 ### Automatic (Recommended)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
 ```
 
-### Manual
+### Manual (Linux/Mac/Windows)
 
-1. **Create `~/.config/zed/tasks.json`** (or edit if exists):
+1. **Create `~/.config/zed/tasks.json`** (or open command palette (ctrl/cmd + shift + p)  and search `zed: open tasks`):
 
 ```json
 [
 	{
 		"label": "Run File",
-		"command": "bash",
-		"args": [
-			"-c",
-			"FILE=\"$ZED_FILE\"; STEM=\"$ZED_STEM\"; set -e; clear; case \"$FILE\" in *.py) echo \">>> Running Python...\"; python3 \"$FILE\";; *.js) echo \">>> Running JavaScript (Node)...\"; node \"$FILE\";; *.dart) echo \">>> Running Dart...\"; dart run \"$FILE\";; *.java) echo \">>> Running Java (JIT compilation)...\"; java \"$FILE\";; *.go) echo \">>> Running Go...\"; go run \"$FILE\";; *.rb) echo \">>> Running Ruby...\"; ruby \"$FILE\";; *.cpp|*.cc) echo \">>> Compiling C++ (O2 Optimization)...\"; g++ \"$FILE\" -o \"$STEM\" -Wall -Wextra -O2 -std=c++20 && echo \">>> Running C++ executable...\" && ./\"$STEM\" && rm -f \"$STEM\";; *.c) echo \">>> Compiling C (O2 Optimization)...\"; gcc \"$FILE\" -o \"$STEM\" -Wall -Wextra -O2 -std=c17 && echo \">>> Running C executable...\" && ./\"$STEM\" && rm -f \"$STEM\";; *.cs) echo \">>> Running C# (.NET)...\"; dotnet run;; *.ts) echo \">>> Running TypeScript (ts-node)...\"; ts-node \"$FILE\";; *.php) echo \">>> Running PHP...\"; php \"$FILE\";; *) echo \"Unsupported file type\"; exit 1;; esac && echo \"\" && echo \"✅ Finished running code successfully.\""
-		],
+		"command": "$HOME/.config/zed/runner.sh",
+		"args": ["$ZED_FILE"],
 		"use_new_terminal": false,
 		"allow_concurrent_runs": true,
-		"reveal": "always"
+		"reveal": "always",
+		"tags": ["code-runner-run"]
 	}
 ]
 ```
 
-2. **Create `~/.config/zed/keymap.json`** (or edit if exists):
+2. **Create `~/.config/zed/keymap.json`** (or open command palette (ctrl/cmd + shift + p)  and search `zed: open keymap file`):
 
 **For Linux/Windows**:
 
 ```json
 [
-	{
-		"context": "Editor",
-		"bindings": {
-			"ctrl-r": ["task::Spawn", { "task_name": "Run File" }]
-		}
-	}
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-r": ["task::Spawn", {"task_name": "Run File"}]
+    }
+  }
 ]
 ```
 
@@ -82,12 +80,12 @@ curl -sSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/insta
 
 ```json
 [
-	{
-		"context": "Editor",
-		"bindings": {
-			"cmd-r": ["task::Spawn", { "task_name": "Run File" }]
-		}
-	}
+  {
+    "context": "Editor",
+    "bindings": {
+      "cmd-r": ["task::Spawn", {"task_name": "Run File"}]
+    }
+  }
 ]
 ```
 
@@ -221,8 +219,8 @@ Edit `~/.config/zed/tasks.json` to change how languages run:
 Add more cases to the `case` statement in `tasks.json`:
 
 ```bash
-*.rs) echo ">>> Running Rust..."; cargo run;;
-*.swift) echo ">>> Running Swift..."; swift "$FILE";;
+*.rs) echo ">>> Running Rust... | $filename_ext\n"; cargo run;;
+*.swift) echo ">>> Running Swift... | $filename_ext\n"; swift "$FILE";;
 ```
 
 ## 🐛 Troubleshooting
@@ -247,17 +245,6 @@ Make sure the interpreter is installed and in your PATH:
 which python3
 which node
 # etc.
-```
-
-### Wrong working directory
-
-By default, tasks run in the file's directory. To run from project root, modify the task:
-
-```json
-{
-	"command": "bash",
-	"args": ["-c", "cd $ZED_WORKTREE_ROOT && python3 $ZED_FILE"]
-}
 ```
 
 ## 🔄 Updating
