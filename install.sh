@@ -55,7 +55,7 @@ cat > "$TASKS_FILE" << 'EOF'
     "args": ["$ZED_FILE"],
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
-    "reveal": "always"
+    "reveal": "always",
     "tags": ["code-runner-run"]
   }
 ]
