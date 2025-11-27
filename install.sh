@@ -61,9 +61,6 @@ cat > "$TASKS_FILE" << 'EOF'
 ]
 EOF
 
-# Make the script executable
-chmod +x ~/.config/zed/runner.sh
-
 # Verify tasks.json was created
 if [ -f "$TASKS_FILE" ] && [ -s "$TASKS_FILE" ]; then
     echo "✅ tasks.json created successfully"
@@ -98,6 +95,9 @@ case "$FILE" in
 esac
 echo ""; echo "✅ Done!"
 EOF
+
+# Make the script executable
+chmod +x ~/.config/zed/runner.sh
 
 echo ""
 echo "📝 Creating keymap.json..."
