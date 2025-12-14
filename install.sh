@@ -76,33 +76,77 @@ cat > $CONFIG_DIR/runner.sh << 'EOF'
 #!/usr/bin/env bash
 set -e
 
-eel() { echo -e "$@"; }
-ee() { echo ""; }
-
 FILE="$1"
 STEM="${FILE%.*}"
 filename_ext=$(basename "$FILE")
 
 clear
-[ -z "$FILE" ] && echo "Error: No file" && exit 1
+[ -z "$FILE" ] && echo "Error: No file provided" && exit 1
 
 case "$FILE" in
-    *.py) eel -e ">>> Running Python... | $filename_ext\n"; python3 "$FILE";;
-    *.js) eel ">>> Running JavaScript... | $filename_ext\n"; node "$FILE";;
-    *.dart) eel ">>> Running Dart... | $filename_ext\n"; dart run "$FILE";;
-    *.java) eel ">>> Running Java... | $filename_ext\n"; java "$FILE";;
-    *.go) eel ">>> Running Go... | $filename_ext\n"; go run "$FILE";;
-    *.rb) eel ">>> Running Ruby... | $filename_ext\n"; ruby "$FILE";;
-    *.cpp|*.cc) eel ">>> Compiling C++... | $filename_ext\n"; g++ "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c++20 && "$STEM" && rm -f "$STEM";;
-    *.c) eel ">>> Compiling C... | $filename_ext\n"; gcc "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c17 && "$STEM" && rm -f "$STEM";;
-    *.cs) eel ">>> Running C#... | $filename_ext\n"; dotnet run;;
-    *.ts) eel ">>> Running TypeScript... | $filename_ext\n"; ts-node "$FILE";;
-    *.php) eel ">>> Running PHP... | $filename_ext\n"; php "$FILE";;
-    *) eel "Unsupported: $FILE"; exit 1;;
+    *.py) 
+        echo ">>> Running Python... | $filename_ext"
+        echo ""
+        python3 "$FILE"
+        ;;
+    *.js) 
+        echo ">>> Running JavaScript... | $filename_ext"
+        echo ""
+        node "$FILE"
+        ;;
+    *.dart) 
+        echo ">>> Running Dart... | $filename_ext"
+        echo ""
+        dart run "$FILE"
+        ;;
+    *.java) 
+        echo ">>> Running Java... | $filename_ext"
+        echo ""
+        java "$FILE"
+        ;;
+    *.go) 
+        echo ">>> Running Go... | $filename_ext"
+        echo ""
+        go run "$FILE"
+        ;;
+    *.rb) 
+        echo ">>> Running Ruby... | $filename_ext"
+        echo ""
+        ruby "$FILE"
+        ;;
+    *.cpp|*.cc) 
+        echo ">>> Compiling C++... | $filename_ext"
+        echo ""
+        g++ "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c++20 && "$STEM" && rm -f "$STEM"
+        ;;
+    *.c) 
+        echo ">>> Compiling C... | $filename_ext"
+        echo ""
+        gcc "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c17 && "$STEM" && rm -f "$STEM"
+        ;;
+    *.cs) 
+        echo ">>> Running C#... | $filename_ext"
+        echo ""
+        dotnet run
+        ;;
+    *.ts) 
+        echo ">>> Running TypeScript... | $filename_ext"
+        echo ""
+        ts-node "$FILE"
+        ;;
+    *.php) 
+        echo ">>> Running PHP... | $filename_ext"
+        echo ""
+        php "$FILE"
+        ;;
+    *) 
+        echo "Unsupported file type: $FILE"
+        exit 1
+        ;;
 esac
 
-ee
-eel "✅ Finished running code successfully."
+echo ""
+echo "✅ Finished running code successfully."
 EOF
 
 # Make the script executable
