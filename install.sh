@@ -51,8 +51,8 @@ cat > "$TASKS_FILE" << 'EOF'
 [
   {
     "label": "Run File",
-    "command": "$HOME/.config/zed/runner.sh",
-    "args": ["$ZED_FILE"],
+    "command": "/bin/bash",
+    "args": ["--norc", "--noprofile", "$HOME/.config/zed/runner.sh", "$ZED_FILE"],
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "always",
@@ -71,17 +71,28 @@ else
 fi
 
 echo ""
-echo "📝 Create runner.sh script.."
-cat > $CONFIG_DIR/runner.sh << 'EOF'
+echo "📝 Creating runner.sh script..."
+cat > "$CONFIG_DIR/runner.sh" << 'EOF'
 #!/usr/bin/env bash
 set -e
 
+# Debug: log what we receive
 FILE="$1"
+
+# Handle case where file path might be empty or malformed
+if [ -z "$FILE" ]; then
+    echo "Error: No file provided"
+    echo "Arguments received: $@"
+    exit 1
+fi
+
 STEM="${FILE%.*}"
 filename_ext=$(basename "$FILE")
 
 clear
-[ -z "$FILE" ] && echo "Error: No file provided" && exit 1
+echo "Running: $filename_ext"
+echo "Full path: $FILE"
+echo ""
 
 case "$FILE" in
     *.py) 
@@ -150,7 +161,8 @@ echo "✅ Finished running code successfully."
 EOF
 
 # Make the script executable
-chmod +x ~/.config/zed/runner.sh
+chmod +x "$CONFIG_DIR/runner.sh"
+echo "✅ runner.sh created successfully"
 
 echo ""
 echo "📝 Creating keymap.json..."
