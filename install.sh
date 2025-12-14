@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "🚀 Code Runner for Zed - Simple Installer"
-echo "=========================================="
+echo "🚀 Code Runner for Zed - Universal Installer"
+echo "============================================="
 echo ""
 
 # Detect OS and config directory
@@ -15,6 +15,7 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     KEY_BINDING="ctrl-r"
 else
     echo "❌ Unsupported OS: $OSTYPE"
+    echo "   This installer supports Linux and macOS only."
     exit 1
 fi
 
@@ -28,31 +29,253 @@ mkdir -p "$CONFIG_DIR"
 # Backup existing files
 TASKS_FILE="$CONFIG_DIR/tasks.json"
 KEYMAP_FILE="$CONFIG_DIR/keymap.json"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 if [ -f "$TASKS_FILE" ]; then
-    BACKUP="${TASKS_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+    BACKUP="${TASKS_FILE}.backup.${TIMESTAMP}"
     echo "📦 Backing up existing tasks.json to:"
     echo "   $BACKUP"
     cp "$TASKS_FILE" "$BACKUP"
 fi
 
 if [ -f "$KEYMAP_FILE" ]; then
-    BACKUP="${KEYMAP_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+    BACKUP="${KEYMAP_FILE}.backup.${TIMESTAMP}"
     echo "📦 Backing up existing keymap.json to:"
     echo "   $BACKUP"
     cp "$KEYMAP_FILE" "$BACKUP"
 fi
 
 echo ""
+echo "📝 Creating Python wrapper (handles paths with spaces/special chars)..."
+cat > "$CONFIG_DIR/run_code.py" << 'EOF'
+#!/usr/bin/env python3
+"""
+Wrapper script to run code files in Zed editor.
+Handles file paths with spaces, parentheses, and special characters.
+"""
+import subprocess
+import sys
+import os
+
+def main():
+    if len(sys.argv) < 2:
+        print("Error: No file provided")
+        print(f"Usage: {sys.argv[0]} <file_path>")
+        sys.exit(1)
+
+    file_path = sys.argv[1]
+    
+    # Check if file exists
+    if not os.path.exists(file_path):
+        print(f"Error: File not found: {file_path}")
+        sys.exit(1)
+    
+    runner_script = os.path.expanduser("~/.config/zed/runner.sh")
+    
+    # Check if runner script exists
+    if not os.path.exists(runner_script):
+        print(f"Error: Runner script not found: {runner_script}")
+        print("Please reinstall using install.sh")
+        sys.exit(1)
+    
+    # Run bash with --norc and --noprofile to avoid loading .bashrc
+    # This prevents conflicts with custom bash configurations (like Omarchy)
+    # File path is passed as a list element, so it's automatically properly escaped
+    try:
+        result = subprocess.run(
+            ["/bin/bash", "--norc", "--noprofile", runner_script, file_path]
+        )
+        sys.exit(result.returncode)
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Execution interrupted by user")
+        sys.exit(130)
+    except Exception as e:
+        print(f"\n❌ Error running script: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+EOF
+
+chmod +x "$CONFIG_DIR/run_code.py"
+echo "✅ run_code.py created successfully"
+
+echo ""
+echo "📝 Creating runner.sh script..."
+cat > "$CONFIG_DIR/runner.sh" << 'RUNNEREOF'
+#!/bin/bash
+set -e
+
+FILE="$1"
+
+# Validate input
+if [ -z "$FILE" ]; then
+    echo "❌ Error: No file provided"
+    echo "Arguments received: $@"
+    exit 1
+fi
+
+if [ ! -f "$FILE" ]; then
+    echo "❌ Error: File not found: $FILE"
+    exit 1
+fi
+
+STEM="${FILE%.*}"
+filename_ext=$(basename "$FILE")
+
+clear
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🚀 Running: $filename_ext"
+echo "📁 Path: $FILE"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+case "$FILE" in
+    *.py) 
+        echo ">>> Running Python..."
+        echo ""
+        python3 "$FILE"
+        ;;
+    *.js) 
+        echo ">>> Running JavaScript (Node.js)..."
+        echo ""
+        node "$FILE"
+        ;;
+    *.ts) 
+        echo ">>> Running TypeScript..."
+        echo ""
+        if ! command -v ts-node &> /dev/null; then
+            echo "❌ ts-node not found. Install it with: npm install -g ts-node"
+            exit 1
+        fi
+        ts-node "$FILE"
+        ;;
+    *.dart) 
+        echo ">>> Running Dart..."
+        echo ""
+        if ! command -v dart &> /dev/null; then
+            echo "❌ dart not found. Please install Dart SDK."
+            exit 1
+        fi
+        dart run "$FILE"
+        ;;
+    *.java) 
+        echo ">>> Running Java..."
+        echo ""
+        java "$FILE"
+        ;;
+    *.go) 
+        echo ">>> Running Go..."
+        echo ""
+        go run "$FILE"
+        ;;
+    *.rb) 
+        echo ">>> Running Ruby..."
+        echo ""
+        ruby "$FILE"
+        ;;
+    *.cpp|*.cc|*.cxx) 
+        echo ">>> Compiling and running C++..."
+        echo ""
+        g++ "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c++20 && "$STEM"
+        EXIT_CODE=$?
+        rm -f "$STEM"
+        exit $EXIT_CODE
+        ;;
+    *.c) 
+        echo ">>> Compiling and running C..."
+        echo ""
+        gcc "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c17 && "$STEM"
+        EXIT_CODE=$?
+        rm -f "$STEM"
+        exit $EXIT_CODE
+        ;;
+    *.cs) 
+        echo ">>> Running C#..."
+        echo ""
+        dotnet run
+        ;;
+    *.php) 
+        echo ">>> Running PHP..."
+        echo ""
+        php "$FILE"
+        ;;
+    *.sh) 
+        echo ">>> Running Shell Script..."
+        echo ""
+        bash "$FILE"
+        ;;
+    *.pl) 
+        echo ">>> Running Perl..."
+        echo ""
+        perl "$FILE"
+        ;;
+    *.lua) 
+        echo ">>> Running Lua..."
+        echo ""
+        lua "$FILE"
+        ;;
+    *.r|*.R) 
+        echo ">>> Running R..."
+        echo ""
+        Rscript "$FILE"
+        ;;
+    *.swift) 
+        echo ">>> Running Swift..."
+        echo ""
+        swift "$FILE"
+        ;;
+    *.rs) 
+        echo ">>> Compiling and running Rust..."
+        echo ""
+        rustc "$FILE" -o "$STEM" && "$STEM"
+        EXIT_CODE=$?
+        rm -f "$STEM"
+        exit $EXIT_CODE
+        ;;
+    *) 
+        echo "❌ Unsupported file type: $filename_ext"
+        echo ""
+        echo "Supported languages:"
+        echo "  • Python (.py)"
+        echo "  • JavaScript (.js)"
+        echo "  • TypeScript (.ts)"
+        echo "  • Java (.java)"
+        echo "  • Go (.go)"
+        echo "  • Ruby (.rb)"
+        echo "  • C++ (.cpp, .cc, .cxx)"
+        echo "  • C (.c)"
+        echo "  • C# (.cs)"
+        echo "  • PHP (.php)"
+        echo "  • Dart (.dart)"
+        echo "  • Shell (.sh)"
+        echo "  • Perl (.pl)"
+        echo "  • Lua (.lua)"
+        echo "  • R (.r, .R)"
+        echo "  • Swift (.swift)"
+        echo "  • Rust (.rs)"
+        exit 1
+        ;;
+esac
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Finished successfully"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+RUNNEREOF
+
+chmod +x "$CONFIG_DIR/runner.sh"
+echo "✅ runner.sh created successfully"
+
+echo ""
 echo "📝 Creating tasks.json..."
 
-# Create tasks.json - this will REPLACE any existing file
+# Create tasks.json with proper quoting for paths with special characters
 cat > "$TASKS_FILE" << 'EOF'
 [
   {
     "label": "Run File",
-    "command": "$HOME/.config/zed/runner.sh",
-    "args": ["$ZED_FILE"],
+    "command": "python3 $HOME/.config/zed/run_code.py \"$ZED_FILE\"",
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "always",
@@ -61,113 +284,17 @@ cat > "$TASKS_FILE" << 'EOF'
 ]
 EOF
 
-# Verify tasks.json was created
 if [ -f "$TASKS_FILE" ] && [ -s "$TASKS_FILE" ]; then
     echo "✅ tasks.json created successfully"
-    echo "   Size: $(wc -c < "$TASKS_FILE") bytes"
 else
     echo "❌ Failed to create tasks.json"
     exit 1
 fi
 
 echo ""
-echo "📝 Creating runner.sh script..."
-cat > "$CONFIG_DIR/runner.sh" << 'RUNNEREOF'
-#!/bin/bash --norc --noprofile
-set -e
-
-# Debug: log what we receive
-FILE="$1"
-
-# Handle case where file path might be empty or malformed
-if [ -z "$FILE" ]; then
-    echo "Error: No file provided"
-    echo "Arguments received: $@"
-    exit 1
-fi
-
-STEM="${FILE%.*}"
-filename_ext=$(basename "$FILE")
-
-clear
-echo "Running: $filename_ext"
-echo "Full path: $FILE"
-echo ""
-
-case "$FILE" in
-    *.py) 
-        echo ">>> Running Python... | $filename_ext"
-        echo ""
-        python3 "$FILE"
-        ;;
-    *.js) 
-        echo ">>> Running JavaScript... | $filename_ext"
-        echo ""
-        node "$FILE"
-        ;;
-    *.dart) 
-        echo ">>> Running Dart... | $filename_ext"
-        echo ""
-        dart run "$FILE"
-        ;;
-    *.java) 
-        echo ">>> Running Java... | $filename_ext"
-        echo ""
-        java "$FILE"
-        ;;
-    *.go) 
-        echo ">>> Running Go... | $filename_ext"
-        echo ""
-        go run "$FILE"
-        ;;
-    *.rb) 
-        echo ">>> Running Ruby... | $filename_ext"
-        echo ""
-        ruby "$FILE"
-        ;;
-    *.cpp|*.cc) 
-        echo ">>> Compiling C++... | $filename_ext"
-        echo ""
-        g++ "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c++20 && "$STEM" && rm -f "$STEM"
-        ;;
-    *.c) 
-        echo ">>> Compiling C... | $filename_ext"
-        echo ""
-        gcc "$FILE" -o "$STEM" -Wall -Wextra -O2 -std=c17 && "$STEM" && rm -f "$STEM"
-        ;;
-    *.cs) 
-        echo ">>> Running C#... | $filename_ext"
-        echo ""
-        dotnet run
-        ;;
-    *.ts) 
-        echo ">>> Running TypeScript... | $filename_ext"
-        echo ""
-        ts-node "$FILE"
-        ;;
-    *.php) 
-        echo ">>> Running PHP... | $filename_ext"
-        echo ""
-        php "$FILE"
-        ;;
-    *) 
-        echo "Unsupported file type: $FILE"
-        exit 1
-        ;;
-esac
-
-echo ""
-echo "✅ Finished running code successfully."
-RUNNEREOF
-
-# Make the script executable
-chmod +x "$CONFIG_DIR/runner.sh"
-echo "✅ runner.sh created successfully"
-
-echo ""
 echo "📝 Creating keymap.json..."
 
-# Create keymap.json - this will REPLACE any existing file
+# Create keymap.json based on OS
 if [ "$OS" = "mac" ]; then
     cat > "$KEYMAP_FILE" << 'EOF'
 [
@@ -192,10 +319,8 @@ else
 EOF
 fi
 
-# Verify keymap.json was created
 if [ -f "$KEYMAP_FILE" ] && [ -s "$KEYMAP_FILE" ]; then
     echo "✅ keymap.json created successfully"
-    echo "   Size: $(wc -c < "$KEYMAP_FILE") bytes"
 else
     echo "❌ Failed to create keymap.json"
     exit 1
@@ -205,41 +330,48 @@ echo ""
 echo "🔍 Verifying installation..."
 echo ""
 
-# Show what was created
-echo "📄 tasks.json content:"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-cat "$TASKS_FILE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+# Check Python is available
+if ! command -v python3 &> /dev/null; then
+    echo "⚠️  Warning: python3 not found. This is required for the runner."
+fi
+
+# List created files
+echo "📄 Created files:"
+echo "  • $CONFIG_DIR/run_code.py"
+echo "  • $CONFIG_DIR/runner.sh"
+echo "  • $CONFIG_DIR/tasks.json"
+echo "  • $CONFIG_DIR/keymap.json"
 echo ""
 
-echo "📄 keymap.json content:"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-cat "$KEYMAP_FILE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ Installation Complete!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "⚠️  IMPORTANT: You MUST restart Zed completely!"
+echo "⚠️  IMPORTANT: Restart Zed completely for changes to take effect!"
 echo ""
 echo "🎯 How to Use:"
-echo "  1. Close Zed completely"
+echo "  1. Close Zed completely (Cmd/Ctrl+Q)"
 echo "  2. Reopen Zed"
-echo "  3. Open any code file (test.py, test.js, etc.)"
-echo "  4. Press $KEY_BINDING"
-echo "  5. Code runs in the terminal!"
+echo "  3. Open any supported code file"
+echo "  4. Press $KEY_BINDING to run the file"
 echo ""
 echo "🧪 Quick Test:"
 echo "  echo 'print(\"Hello, World!\")' > test.py"
 echo "  zed test.py"
 echo "  # Press $KEY_BINDING"
 echo ""
-echo "📚 Supported: Python, JavaScript, Dart, Java, Go, Ruby, C++, C, C#, TypeScript, PHP"
+echo "✨ Features:"
+echo "  • Works with paths containing spaces and special characters"
+echo "  • Bypasses custom bash configurations (like Omarchy)"
+echo "  • Supports 18+ programming languages"
+echo "  • Automatic compilation for C/C++/Rust"
+echo "  • Helpful error messages"
 echo ""
 echo "🔧 Troubleshooting:"
-echo "  • If nothing happens: Make sure you restarted Zed"
-echo "  • Check files exist: ls -la $CONFIG_DIR"
-echo "  • Manual test: Open Zed → Ctrl/Cmd+Shift+P → 'task: spawn' → 'Run File'"
+echo "  • Nothing happens? Make sure you restarted Zed"
+echo "  • Manual test: Cmd/Ctrl+Shift+P → 'task: spawn' → 'Run File'"
+echo "  • Check logs in Zed's terminal panel"
+echo "  • Test directly: python3 ~/.config/zed/run_code.py test.py"
 echo ""
-echo "📦 Your old configs were backed up with .backup.* extension"
+echo "📦 Backups: Old configs saved with .backup.$TIMESTAMP extension"
 echo ""
