@@ -51,8 +51,8 @@ cat > "$TASKS_FILE" << 'EOF'
 [
   {
     "label": "Run File",
-    "command": "sh",
-    "args": ["-c", "exec bash --norc --noprofile \"$HOME/.config/zed/runner.sh\" \"$ZED_FILE\""],
+    "command": "$HOME/.config/zed/runner.sh",
+    "args": ["$ZED_FILE"],
     "use_new_terminal": false,
     "allow_concurrent_runs": true,
     "reveal": "always",
@@ -72,8 +72,8 @@ fi
 
 echo ""
 echo "📝 Creating runner.sh script..."
-cat > "$CONFIG_DIR/runner.sh" << 'EOF'
-#!/bin/bash
+cat > "$CONFIG_DIR/runner.sh" << 'RUNNEREOF'
+#!/bin/bash --norc --noprofile
 set -e
 
 # Debug: log what we receive
@@ -158,7 +158,7 @@ esac
 
 echo ""
 echo "✅ Finished running code successfully."
-EOF
+RUNNEREOF
 
 # Make the script executable
 chmod +x "$CONFIG_DIR/runner.sh"
