@@ -136,7 +136,8 @@ cd "$DIR" || exit 1
 
 # Compiled programs are built in a private temporary directory that is always
 # removed, so nothing next to the source file is created, overwritten or deleted
-BUILD_DIR=$(mktemp -d "${TMPDIR:-/tmp}/zed-code-runner.XXXXXX") || exit 1
+TMP_ROOT="${TMPDIR:-/tmp}"
+BUILD_DIR=$(mktemp -d "${TMP_ROOT%/}/zed-code-runner.XXXXXX") || exit 1
 BIN="$BUILD_DIR/$STEM"
 trap 'rm -rf "$BUILD_DIR"' EXIT
 trap 'exit 130' INT
@@ -313,6 +314,11 @@ fi
 # -------------------------------------------------------------- languages ---
 
 DEBUG_FLAGS="-g -O0 -fsanitize=address,undefined -fno-omit-frame-pointer"
+# On macOS the sanitizer aborts the program (exit 134 and an "Abort trap"
+# line); exit with code 1 instead, the same as on Linux
+if [ "$MODE" = "debug" ] && [ -z "${ASAN_OPTIONS:-}" ]; then
+    export ASAN_OPTIONS="abort_on_error=0"
+fi
 
 # Java: CLASS is the class to run (package + file name); JAVA_EA turns on
 # `assert` statements in debug runs

@@ -76,7 +76,8 @@ if [ "$ACTION" = "doctor" ]; then
     exit 1
 fi
 
-TMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/zed-code-runner-install.XXXXXX") || exit 1
+TMP_ROOT="${TMPDIR:-/tmp}"
+TMP_DIR=$(mktemp -d "${TMP_ROOT%/}/zed-code-runner-install.XXXXXX") || exit 1
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # ------------------------------------------------------------ JSON editing ---

@@ -8,7 +8,8 @@
 #                                Maven plugins and starts Gradle the first time)
 
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-WORK=$(mktemp -d "${TMPDIR:-/tmp}/zed-code-runner-test.XXXXXX")
+TMP_ROOT="${TMPDIR:-/tmp}"
+WORK=$(mktemp -d "${TMP_ROOT%/}/zed-code-runner-test.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT
 export TERM=dumb
 SLOW=""
@@ -63,7 +64,8 @@ json_ok() {
     python3 -I - "$1" << 'EOF'
 import json, re, sys
 s = open(sys.argv[1]).read()
-s = re.sub(r"//[^\n]*", "", s)
+# drop // comments, but not // inside strings (paths can contain it)
+s = re.sub(r'("(?:\\.|[^"\\])*")|//[^\n]*', lambda m: m.group(1) or "", s)
 s = re.sub(r",(\s*[\]}])", r"\1", s)
 json.loads(s)
 EOF
@@ -219,7 +221,7 @@ if have gcc; then
     printf 'int main(void){ return syntax error }\n' > "$SRC/broken.c"
     expect "compile error reported" 1 "Failed with code 1" "$SRC/broken.c"
 
-    printf '#include <stdio.h>\nint main(void){int x; switch(1){case 1: x=1; case 2: x=2;} printf("%%d\\n", x); return 0;}\n' > "$SRC/warn.c"
+    printf 'int main(void) { int unused; return 0; }\n' > "$SRC/warn.c"
     expect "warning count shown" 0 "Compiled with [0-9]+ warnings?" "$SRC/warn.c"
 
     printf '#include <stdio.h>\nint main(void){int a,b; scanf("%%d %%d",&a,&b); printf("sum %%d\\n",a+b); return 0;}\n' > "$SRC/sum.c"
@@ -266,7 +268,7 @@ echo 'x' > "$SRC/file.unknown"
 expect "unsupported type" 1 "Unsupported file type" "$SRC/file.unknown"
 expect "doctor" 0 "Language runtimes" --doctor
 
-left=$(find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'zed-code-runner.*' -newer "$REPO/runner.sh" 2> /dev/null | wc -l | tr -d ' ')
+left=$(find "$TMP_ROOT" -maxdepth 1 -name 'zed-code-runner.*' -newer "$REPO/runner.sh" 2> /dev/null | wc -l | tr -d ' ')
 [ "$left" -eq 0 ] && ok "no temp folders left behind" || bad "no temp folders left behind ($left found)"
 
 echo ""
