@@ -11,15 +11,15 @@ Then press `Ctrl+R` (`Cmd+R` on Mac) in any code file.
 ## ✨ Features
 
 - **One key to run**: `Ctrl+R` / `Cmd+R` runs the current file; Zed's Rerun key (`Ctrl+Shift+R` / `Cmd+Alt+R`) runs it again from any file
-- **▶ next to `main()`**: click the run button Zed shows next to `main()` in C, C++, Rust and Go, and next to `if __name__ == "__main__":` in Python
+- **▶ next to `main()`**: click the run button Zed shows next to `main()` in C, C++, Rust, Go and Java (with Zed's Java extension), and next to `if __name__ == "__main__":` in Python
 - **20 languages**: Python, JavaScript, TypeScript, Dart, Java, Kotlin, Go, Ruby, C, C++, C#, PHP, Shell, Perl, Lua, R, Swift, Rust and Zig
-- **Knows your project**: uses the project's `.venv` or uv for Python, `cargo run` in a Cargo crate, `go run .` in a Go module, and `dotnet run --project` for C# projects
+- **Knows your project**: uses the project's `.venv` or uv for Python, Maven or Gradle for Java, `cargo run` in a Cargo crate, `go run .` in a Go module, and `dotnet run --project` for C# projects
 - **Input files**: put `calculator.in` next to `calculator.cpp` and it's used as the program's input, so you don't retype test input on every run
 - **Clear results**: a warning count after compiling, then ✅ with the run time, or ❌ with the exit code
-- **Debug builds**: Run File (debug) compiles C and C++ with sanitizers that catch out-of-bounds access, use-after-free and undefined behaviour
+- **Debug builds**: Run File (debug) compiles C and C++ with sanitizers that catch out-of-bounds access, use-after-free and undefined behaviour, and turns on Java's `assert` checks
 - **Run Selection**: run just the selected lines (Python, JavaScript, TypeScript, Ruby, Perl, Lua, Shell, PHP, R)
 - **Your own commands**: add or change languages in `custom.sh`, which updates never touch
-- **Clean**: compiled programs are built in a temporary folder and removed afterwards; programs run from their own folder, so relative paths like `data.txt` work
+- **Clean**: compiled programs are built in a temporary folder and removed afterwards; programs run from their own folder, so relative paths like `data.txt` work (Cargo, Maven and Gradle projects run from the project folder)
 
 ## 📋 Languages
 
@@ -29,7 +29,7 @@ Then press `Ctrl+R` (`Cmd+R` on Mac) in any code file.
 | JavaScript | `.js`, `.mjs`, `.cjs`   | `node`                                                                     |
 | TypeScript | `.ts`, `.mts`, `.cts`   | the first found of `tsx`, `bun`, Node.js 22.18+, `deno`, `ts-node`         |
 | Dart       | `.dart`                 | `dart run`                                                                 |
-| Java       | `.java`                 | `java` (single-file source launcher, JDK 11+)                              |
+| Java       | `.java`                 | Maven or Gradle in a project (wrapper if present), else `javac` + `java`, any JDK; see [Java](#java) |
 | Kotlin     | `.kt`, `.kts`           | `kotlinc` then `java -jar`; `kotlinc -script` for `.kts`                   |
 | Go         | `.go`                   | `go run .` in a module, else `go run file.go`                              |
 | Ruby       | `.rb`                   | `ruby`                                                                     |
@@ -53,7 +53,7 @@ Run **Code Runner: Doctor** from the task list to see which of these are install
 | ------------------------ | --------------------------------------------------------------------------------------- |
 | Run the current file     | `Ctrl+R` / `Cmd+R`, or ▶ next to `main()`                                               |
 | Run it again             | `Ctrl+Shift+R` / `Cmd+Alt+R`, from any file (Zed's built-in Rerun)                     |
-| Debug build (C/C++)      | task list (`Alt+Shift+T` on Linux, `Cmd+Shift+R` on Mac) → **Run File (debug)**        |
+| Debug build (C/C++/Java) | task list (`Alt+Shift+T` on Linux, `Cmd+Shift+R` on Mac) → **Run File (debug)**        |
 | Run selected lines       | select them → task list → **Run Selection** (only listed while text is selected)       |
 | Check installed runtimes | task list → **Code Runner: Doctor**                                                     |
 
@@ -72,7 +72,16 @@ The header shows `📥 Input: calculator.in` when this happens. Rename or delete
 
 ### Debug builds
 
-**Run File (debug)** compiles C and C++ with `-g -O0 -fsanitize=address,undefined`. Instead of a random crash or a wrong answer, you get a report naming the line that read past the end of an array, used freed memory, or overflowed an `int`.
+**Run File (debug)** compiles C and C++ with `-g -O0 -fsanitize=address,undefined`. Instead of a random crash or a wrong answer, you get a report naming the line that read past the end of an array, used freed memory, or overflowed an `int`. For Java it turns on `assert` statements (`java -ea`), which Java skips by default.
+
+### Java
+
+- **A single file or a folder of exercises**: `javac` compiles the file and only the classes it uses from the same folder or package tree, so a broken exercise next to it doesn't matter. Works on every JDK, including JDK 25's short `void main()` files. Class files go to a temporary folder, not next to your code.
+- **Packages**: `package com.demo;` in `src/com/demo/App.java` is found and run as `com.demo.App`.
+- **Maven** (`pom.xml`): compiles with Maven (`./mvnw` if the project has it), then runs the class with the project's classpath. Any class with a `main` runs, not just the one the build names. Multi-module builds compile the module together with the modules it depends on. Files under `src/test/` run with the test classpath.
+- **Gradle** (`build.gradle` / `build.gradle.kts`): the same, with `./gradlew` if present.
+- Maven and Gradle only build; the program itself runs with `java`, so typing input and `NAME.in` work the same as everywhere else.
+- With Zed's Java extension installed, the ▶ next to `main` uses Code Runner; the extension's buttons for tests keep working as before.
 
 ## 📦 Installation
 
@@ -186,7 +195,7 @@ Zed extensions can add languages, themes, snippets, debuggers, language servers 
 ## 🧪 Development
 
 ```bash
-bash tests/smoke.sh
+bash tests/smoke.sh          # add --slow to include Maven and Gradle projects
 ```
 
 installs into a temporary folder, runs a small program in every installed language, and checks the installer's edits. CI runs it on Linux and macOS (bash 3.2) together with ShellCheck.

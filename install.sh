@@ -93,10 +93,11 @@ import json, re, shutil, sys
 action, kind, path, stamp, runner, key, key_given = sys.argv[1:8]
 
 RUN_ACTION = ["task::Spawn", {"task_name": "Run File"}]
-# Runnable tags of Zed's built-in languages: the run button next to main()
+# Runnable tags of Zed's languages: the run button next to main()
 # (or `if __name__ == "__main__":`) runs Run File
 RUNNABLE_TAGS = ["c-main", "cpp-main", "rust-main", "go-main",
-                 "python-module-main-method", "bash-script"]
+                 "python-module-main-method", "bash-script",
+                 "java-main"]  # java-main comes from the Java extension
 
 def task(label, args, **extra):
     t = {"label": label, "command": "bash", "args": [runner] + args,
@@ -444,7 +445,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "🎯 How to Use:"
 echo "  • $RUN_KEY runs the current file; $RERUN_KEY runs it again from anywhere"
-echo "  • Click ▶ next to main() in C, C++, Rust, Go and Python files"
+echo "  • Click ▶ next to main() in C, C++, Rust, Go, Java and Python files"
 echo "  • Task list ($SPAWN_KEY): Run File (debug), Run Selection,"
 echo "    Code Runner: Doctor"
 echo "  • Put NAME.in next to NAME.cpp (or any file) to use it as the input"

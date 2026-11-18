@@ -63,6 +63,8 @@ doctor() {
     fi
     doctor_line "Dart" dart dart --version
     doctor_line "Java" java java --version
+    doctor_line "Maven" mvn mvn -v
+    doctor_line "Gradle" gradle sh -c 'gradle -v | grep -m 1 Gradle'
     doctor_line "Kotlin" kotlinc kotlinc -version
     doctor_line "Go" go go version
     doctor_line "Ruby" ruby ruby --version
@@ -129,6 +131,7 @@ FILE="$DIR/$FILENAME"
 STEM="${FILENAME%.*}"
 
 # Programs run from their own folder, so relative paths like "data.txt" work
+# (Cargo, Maven and Gradle projects run from the project folder instead)
 cd "$DIR" || exit 1
 
 # Compiled programs are built in a private temporary directory that is always
@@ -293,9 +296,9 @@ echo ""
 
 if [ "$MODE" = "debug" ]; then
     case "$FILE" in
-        *.c|*.cpp|*.cc|*.cxx) ;;
+        *.c|*.cpp|*.cc|*.cxx|*.java) ;;
         *)
-            echo "ℹ️  Debug builds are for C and C++; running $FILENAME as usual."
+            echo "ℹ️  Debug builds are for C, C++ and Java; running $FILENAME as usual."
             echo ""
             ;;
     esac
@@ -310,6 +313,114 @@ fi
 # -------------------------------------------------------------- languages ---
 
 DEBUG_FLAGS="-g -O0 -fsanitize=address,undefined -fno-omit-frame-pointer"
+
+# Java: CLASS is the class to run (package + file name); JAVA_EA turns on
+# `assert` statements in debug runs
+java_setup() {
+    local pkg
+    pkg=$(sed -n 's/^[[:space:]]*package[[:space:]]\{1,\}\([A-Za-z0-9_.]\{1,\}\)[[:space:]]*;.*/\1/p' \
+        "$FILE" | head -n 1)
+    CLASS="${pkg:+$pkg.}$STEM"
+    PKG_PATH=$(echo "$pkg" | tr . /)
+    JAVA_EA=""
+    [ "$MODE" = "debug" ] && JAVA_EA="-ea"
+    SOURCE_SET="main"
+    case "$FILE" in */src/test/*) SOURCE_SET="test" ;; esac
+}
+
+# Plain Java: javac compiles the file plus any classes it uses from the same
+# source tree (-sourcepath), on every JDK version, into the temp folder
+java_plain() {
+    local root="$DIR"
+    if [ -n "$PKG_PATH" ] && [ "${DIR%/"$PKG_PATH"}" != "$DIR" ]; then
+        root="${DIR%/"$PKG_PATH"}"
+    fi
+    say "Compiling and running Java ($CLASS)..."
+    need javac "Please install a JDK (not just a Java runtime)."
+    compile javac -d "$BUILD_DIR/classes" -sourcepath "$root" "$FILE"
+    # shellcheck disable=SC2086
+    run java $JAVA_EA -cp "$BUILD_DIR/classes" "$CLASS"
+}
+
+# Maven and Gradle only build the code and write its classpath to a file;
+# the program then runs with plain `java`, so it reads input straight from the
+# terminal (or NAME.in) and starts without the build tool in between.
+
+# Maven: compile and write the classpath in one go. In a multi-module build,
+# the module is built from the top-level pom.xml together with the modules it
+# depends on (-pl MODULE -am), which come last-to-first so the module's own
+# classpath is what ends up in the file.
+java_maven() {
+    local module="$1" root="$1" d mvn goal="compile" scope="runtime"
+    local cp_file="$BUILD_DIR/classpath.txt" classes
+    d=$(dirname "$module")
+    while [ "$d" != "/" ] && [ -f "$d/pom.xml" ]; do
+        root="$d"
+        d=$(dirname "$d")
+    done
+    if [ -x "$root/mvnw" ]; then
+        mvn="$root/mvnw"
+    else
+        need mvn "Please install Maven, or add the Maven wrapper (mvnw) to the project."
+        mvn="mvn"
+    fi
+    classes="$module/target/classes"
+    if [ "$SOURCE_SET" = "test" ]; then
+        goal="test-compile"
+        scope="test"
+        classes="$module/target/test-classes:$classes"
+    fi
+    say "Building with Maven (project in $module)..."
+    set -- -q "$goal" dependency:build-classpath \
+        "-Dmdep.outputFile=$cp_file" "-Dmdep.includeScope=$scope"
+    if [ "$module" != "$root" ]; then
+        set -- "$@" -pl "${module#"$root"/}" -am
+    fi
+    (cd "$root" && "$mvn" "$@") || finish $?
+    say "Running $CLASS..."
+    cd "$module" || finish 1
+    # shellcheck disable=SC2086
+    run java $JAVA_EA -cp "$classes:$(cat "$cp_file")" "$CLASS"
+}
+
+# Gradle: an init script adds a codeRunnerClasspath task to the module the
+# file is in; it builds the module (and the modules it uses) and writes the
+# runtime classpath, so any class with a main() runs, not just the one the
+# build names
+java_gradle() {
+    local module="$1" gradle wrapper
+    local init="$BUILD_DIR/code-runner.init.gradle" cp_file="$BUILD_DIR/classpath.txt"
+    if wrapper=$(find_up "gradlew") && [ -x "$wrapper/gradlew" ]; then
+        gradle="$wrapper/gradlew"
+    else
+        need gradle "Please install Gradle, or add the Gradle wrapper (gradlew) to the project."
+        gradle="gradle"
+    fi
+    cat > "$init" << 'GRADLE'
+allprojects { p ->
+    p.afterEvaluate {
+        def wanted = new File(p.findProperty('codeRunnerDir') ?: '.').canonicalPath
+        if (p.projectDir.canonicalPath == wanted && p.plugins.hasPlugin('java')) {
+            def set = p.sourceSets.getByName(p.findProperty('codeRunnerSourceSet') ?: 'main')
+            def cp = set.runtimeClasspath
+            def out = new File(p.findProperty('codeRunnerOut'))
+            p.tasks.register('codeRunnerClasspath') {
+                dependsOn cp
+                doLast { out.text = cp.asPath }
+            }
+        }
+    }
+}
+GRADLE
+    say "Building with Gradle (project in $module)..."
+    (cd "$module" && "$gradle" -q --console=plain -I "$init" codeRunnerClasspath \
+        "-PcodeRunnerDir=$module" "-PcodeRunnerSourceSet=$SOURCE_SET" \
+        "-PcodeRunnerOut=$cp_file") || finish $?
+    say "Running $CLASS..."
+    cd "$module" || finish 1
+    # shellcheck disable=SC2086
+    run java $JAVA_EA -cp "$(cat "$cp_file")" "$CLASS"
+}
 
 case "$FILE" in
     *.py)
@@ -361,9 +472,15 @@ case "$FILE" in
         run dart run "$FILE"
         ;;
     *.java)
-        say "Running Java..."
-        need java "Please install a JDK (11 or newer)."
-        run java "$FILE"
+        need java "Please install a JDK."
+        java_setup
+        if PROJECT_DIR=$(find_up "pom.xml"); then
+            java_maven "$PROJECT_DIR"
+        elif PROJECT_DIR=$(find_up "build.gradle*"); then
+            java_gradle "$PROJECT_DIR"
+        else
+            java_plain
+        fi
         ;;
     *.kt)
         say "Compiling and running Kotlin..."

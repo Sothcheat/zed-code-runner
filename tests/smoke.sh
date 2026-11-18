@@ -3,12 +3,16 @@
 # every language whose runtime is installed, and check the installer's edits
 # to tasks.json and keymap.json. Languages without a runtime are skipped.
 #
-#   bash tests/smoke.sh
+#   bash tests/smoke.sh          quick tests
+#   bash tests/smoke.sh --slow   also Maven and Gradle projects (downloads
+#                                Maven plugins and starts Gradle the first time)
 
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/zed-code-runner-test.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT
 export TERM=dumb
+SLOW=""
+[ "${1:-}" = "--slow" ] && SLOW=1
 
 # Install into $WORK, never into the real Zed config
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -139,12 +143,70 @@ lang "rust" rustc "hello.rs" 'fn main() { println!("hello rust"); }'
 lang "go" go "hello.go" 'package main
 import "fmt"
 func main() { fmt.Println("hello go") }'
-lang "java" java "Hello.java" 'class Hello { public static void main(String[] a) { System.out.println("hello java"); } }'
+lang "java" javac "Hello.java" 'class Hello { public static void main(String[] a) { System.out.println("hello java"); } }'
 lang "dart" dart "hello.dart" 'void main() { print("hello dart"); }'
 lang "swift" swift "hello.swift" 'print("hello swift")'
 lang "r" Rscript "hello.R" 'cat("hello r\n")'
 lang "zig" zig "hello.zig" 'const std = @import("std");
 pub fn main() void { std.debug.print("hello zig\n", .{}); }'
+
+echo ""
+echo "== Java"
+if have javac; then
+    mkdir -p "$SRC/j1" "$SRC/j2/src/com/demo/util" "$SRC/j3"
+    echo 'public class Main { public static void main(String[] a) { System.out.println("sum=" + MathUtil.add(2, 40)); } }' > "$SRC/j1/Main.java"
+    echo 'class MathUtil { static int add(int a, int b) { return a + b; } }' > "$SRC/j1/MathUtil.java"
+    expect "java: class from another file" 0 "sum=42" "$SRC/j1/Main.java"
+    printf 'package com.demo;\nimport com.demo.util.Greeter;\npublic class App { public static void main(String[] a) { System.out.println(Greeter.hi()); } }\n' > "$SRC/j2/src/com/demo/App.java"
+    printf 'package com.demo.util;\npublic class Greeter { public static String hi() { return "hello packages"; } }\n' > "$SRC/j2/src/com/demo/util/Greeter.java"
+    expect "java: packages" 0 "hello packages" "$SRC/j2/src/com/demo/App.java"
+    echo 'public class Good { public static void main(String[] a) { System.out.println("good runs"); } }' > "$SRC/j3/Good.java"
+    echo 'public class Broken { oops }' > "$SRC/j3/Broken.java"
+    expect "java: broken file next to it is ignored" 0 "good runs" "$SRC/j3/Good.java"
+    [ ! -e "$SRC/j1/bin" ] && [ ! -e "$SRC/j1/Main.class" ] && ok "java: no class files left next to the source" || bad "java: no class files left next to the source"
+    printf 'import java.util.Scanner;\npublic class Twice { public static void main(String[] a) { System.out.println("twice " + new Scanner(System.in).nextInt() * 2); } }\n' > "$SRC/Twice.java"
+    echo 21 > "$SRC/Twice.in"
+    expect "java: NAME.in used as input" 0 "twice 42" "$SRC/Twice.java"
+    echo 'public class Asserts { public static void main(String[] a) { int age = -1; assert age >= 0 : "age must not be negative"; System.out.println("no check"); } }' > "$SRC/Asserts.java"
+    expect "java: assert off in normal runs" 0 "no check" "$SRC/Asserts.java"
+    expect "java: assert on in debug runs" 1 "age must not be negative" --debug "$SRC/Asserts.java"
+else
+    skip "java (javac not installed)"
+fi
+
+if [ -z "$SLOW" ]; then
+    skip "maven and gradle projects (run with --slow)"
+else
+    if have mvn; then
+        mkdir -p "$SRC/mvn/lib/src/main/java/lib" "$SRC/mvn/app/src/main/java/app"
+        cat > "$SRC/mvn/pom.xml" << 'EOF'
+<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion>
+<groupId>demo</groupId><artifactId>parent</artifactId><version>1.0</version><packaging>pom</packaging>
+<modules><module>lib</module><module>app</module></modules>
+<properties><maven.compiler.release>17</maven.compiler.release><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding></properties></project>
+EOF
+        echo '<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><parent><groupId>demo</groupId><artifactId>parent</artifactId><version>1.0</version></parent><artifactId>lib</artifactId></project>' > "$SRC/mvn/lib/pom.xml"
+        echo '<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><parent><groupId>demo</groupId><artifactId>parent</artifactId><version>1.0</version></parent><artifactId>app</artifactId><dependencies><dependency><groupId>demo</groupId><artifactId>lib</artifactId><version>1.0</version></dependency></dependencies></project>' > "$SRC/mvn/app/pom.xml"
+        printf 'package lib;\npublic class Lib { public static String msg() { return "maven lib"; } }\n' > "$SRC/mvn/lib/src/main/java/lib/Lib.java"
+        printf 'package app;\nimport java.util.Scanner;\npublic class App { public static void main(String[] a) { System.out.println("app " + new Scanner(System.in).nextLine() + " " + lib.Lib.msg()); } }\n' > "$SRC/mvn/app/src/main/java/app/App.java"
+        out=$(echo "reads" | "$BASH" "$RUNNER" "$SRC/mvn/app/src/main/java/app/App.java" 2>&1)
+        echo "$out" | grep -q "app reads maven lib" && ok "maven multi-module with input" || bad "maven multi-module with input" "$(echo "$out" | tail -n 15)"
+    else
+        skip "maven (mvn not installed)"
+    fi
+    if have gradle; then
+        mkdir -p "$SRC/gr/lib/src/main/java/lib" "$SRC/gr/app/src/main/java/app"
+        printf 'rootProject.name = "gr"\ninclude("lib", "app")\n' > "$SRC/gr/settings.gradle.kts"
+        echo 'plugins { `java-library` }' > "$SRC/gr/lib/build.gradle.kts"
+        printf 'plugins { java }\ndependencies { implementation(project(":lib")) }\n' > "$SRC/gr/app/build.gradle.kts"
+        printf 'package lib;\npublic class Lib { public static String msg() { return "gradle lib"; } }\n' > "$SRC/gr/lib/src/main/java/lib/Lib.java"
+        printf 'package app;\nimport java.util.Scanner;\npublic class App { public static void main(String[] a) { System.out.println("app " + new Scanner(System.in).nextLine() + " " + lib.Lib.msg()); } }\n' > "$SRC/gr/app/src/main/java/app/App.java"
+        out=$(echo "reads" | "$BASH" "$RUNNER" "$SRC/gr/app/src/main/java/app/App.java" 2>&1)
+        echo "$out" | grep -q "app reads gradle lib" && ok "gradle multi-project with input" || bad "gradle multi-project with input" "$(echo "$out" | tail -n 15)"
+    else
+        skip "gradle (gradle not installed)"
+    fi
+fi
 
 echo ""
 echo "== Behaviour"
