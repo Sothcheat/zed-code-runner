@@ -1,58 +1,88 @@
 # Code Runner for Zed
 
-⚡ Run the file you're editing with a single keybinding, like VS Code's Code Runner.
-
-## 🚀 Quick Install
+⚡ Run the file you're editing with one key, like VS Code's Code Runner.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
 ```
 
-That's it! Press `Ctrl+R` (or `Cmd+R` on Mac) to run any code file.
+Then press `Ctrl+R` (`Cmd+R` on Mac) in any code file.
 
 ## ✨ Features
 
-- **One-key execution**: `Ctrl+R` / `Cmd+R` to run
-- **Auto-detection**: picks the command from the file extension
-- **17 languages**: Python, JavaScript, TypeScript, Dart, Java, Go, Ruby, C++, C, C#, PHP, Shell, Perl, Lua, R, Swift, Rust
-- **Smart compilation**: C, C++ and Rust are compiled with warnings on into a temporary folder that is always cleaned up, so nothing appears next to your source
-- **Clear results**: shows ✅ on success or ❌ with the exit code on failure
-- **Your own commands**: add or override languages in `runner.custom.sh`, which updates never touch
-- **Safe install**: adds one task and one keybinding to your existing Zed config and keeps everything else
+- **One key to run**: `Ctrl+R` / `Cmd+R` runs the current file; Zed's Rerun key (`Ctrl+Shift+R` / `Cmd+Alt+R`) runs it again from any file
+- **▶ next to `main()`**: click the run button Zed shows next to `main()` in C, C++, Rust and Go, and next to `if __name__ == "__main__":` in Python
+- **20 languages**: Python, JavaScript, TypeScript, Dart, Java, Kotlin, Go, Ruby, C, C++, C#, PHP, Shell, Perl, Lua, R, Swift, Rust and Zig
+- **Knows your project**: uses the project's `.venv` or uv for Python, `cargo run` in a Cargo crate, `go run .` in a Go module, and `dotnet run --project` for C# projects
+- **Input files**: put `calculator.in` next to `calculator.cpp` and it's used as the program's input, so you don't retype test input on every run
+- **Clear results**: a warning count after compiling, then ✅ with the run time, or ❌ with the exit code
+- **Debug builds**: Run File (debug) compiles C and C++ with sanitizers that catch out-of-bounds access, use-after-free and undefined behaviour
+- **Run Selection**: run just the selected lines (Python, JavaScript, TypeScript, Ruby, Perl, Lua, Shell, PHP, R)
+- **Your own commands**: add or change languages in `custom.sh`, which updates never touch
+- **Clean**: compiled programs are built in a temporary folder and removed afterwards; programs run from their own folder, so relative paths like `data.txt` work
 
-## 📋 Supported Languages
+## 📋 Languages
 
-| Language   | Extension               | Command                                     |
-| ---------- | ----------------------- | ------------------------------------------- |
-| Python     | `.py`                   | `python3`                                   |
-| JavaScript | `.js`                   | `node`                                      |
-| TypeScript | `.ts`                   | `ts-node`                                   |
-| Dart       | `.dart`                 | `dart run`                                  |
-| Java       | `.java`                 | `java` (single-file source launcher, JDK 11+) |
-| Go         | `.go`                   | `go run`                                    |
-| Ruby       | `.rb`                   | `ruby`                                      |
-| C++        | `.cpp`, `.cc`, `.cxx`   | `g++ -Wall -Wextra -O2 -std=c++20`          |
-| C          | `.c`                    | `gcc -Wall -Wextra -O2 -std=c17`            |
-| C#         | `.cs`                   | `dotnet run --project` inside a project, else `dotnet run file.cs` (.NET 10+) |
-| PHP        | `.php`                  | `php`                                       |
-| Shell      | `.sh`                   | `bash`                                      |
-| Perl       | `.pl`                   | `perl`                                      |
-| Lua        | `.lua`                  | `lua`                                       |
-| R          | `.r`, `.R`              | `Rscript`                                   |
-| Swift      | `.swift`                | `swift`                                     |
-| Rust       | `.rs`                   | `rustc`                                     |
+| Language   | Extensions              | Runs with                                                                  |
+| ---------- | ----------------------- | -------------------------------------------------------------------------- |
+| Python     | `.py`                   | project `.venv`, else `uv run` in a uv project, else `python3`; `uv run --script` for [inline dependencies](https://docs.astral.sh/uv/guides/scripts/) |
+| JavaScript | `.js`, `.mjs`, `.cjs`   | `node`                                                                     |
+| TypeScript | `.ts`, `.mts`, `.cts`   | the first found of `tsx`, `bun`, Node.js 22.18+, `deno`, `ts-node`         |
+| Dart       | `.dart`                 | `dart run`                                                                 |
+| Java       | `.java`                 | `java` (single-file source launcher, JDK 11+)                              |
+| Kotlin     | `.kt`, `.kts`           | `kotlinc` then `java -jar`; `kotlinc -script` for `.kts`                   |
+| Go         | `.go`                   | `go run .` in a module, else `go run file.go`                              |
+| Ruby       | `.rb`                   | `ruby`                                                                     |
+| C          | `.c`                    | `gcc -Wall -Wextra -O2 -std=c17`                                           |
+| C++        | `.cpp`, `.cc`, `.cxx`   | `g++ -Wall -Wextra -O2 -std=c++20`                                         |
+| C#         | `.cs`                   | `dotnet run --project` in a project, else `dotnet run file.cs` (.NET 10+)  |
+| PHP        | `.php`                  | `php`                                                                      |
+| Shell      | `.sh`                   | `bash`                                                                     |
+| Perl       | `.pl`                   | `perl`                                                                     |
+| Lua        | `.lua`                  | `lua`                                                                      |
+| R          | `.r`, `.R`              | `Rscript`                                                                  |
+| Swift      | `.swift`                | `swift`                                                                    |
+| Rust       | `.rs`                   | `cargo run` (right `--bin` / `--example`) in a crate, else `rustc --edition 2021` |
+| Zig        | `.zig`                  | `zig run`                                                                  |
+
+Run **Code Runner: Doctor** from the task list to see which of these are installed.
+
+## 🎯 Usage
+
+| What                     | How                                                                                     |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| Run the current file     | `Ctrl+R` / `Cmd+R`, or ▶ next to `main()`                                               |
+| Run it again             | `Ctrl+Shift+R` / `Cmd+Alt+R`, from any file (Zed's built-in Rerun)                     |
+| Debug build (C/C++)      | task list (`Alt+Shift+T` on Linux, `Cmd+Shift+R` on Mac) → **Run File (debug)**        |
+| Run selected lines       | select them → task list → **Run Selection** (only listed while text is selected)       |
+| Check installed runtimes | task list → **Code Runner: Doctor**                                                     |
+
+The program runs in Zed's terminal, so you can type input when it asks for it.
+
+### Input files
+
+Put a file named like your program with `.in` next to it, and the runner uses it as the program's input:
+
+```
+calculator.cpp
+calculator.in     ← "2\n16\n6\n2\nn\n0\n" is typed in for you
+```
+
+The header shows `📥 Input: calculator.in` when this happens. Rename or delete the file to type input yourself again.
+
+### Debug builds
+
+**Run File (debug)** compiles C and C++ with `-g -O0 -fsanitize=address,undefined`. Instead of a random crash or a wrong answer, you get a report naming the line that read past the end of an array, used freed memory, or overflowed an `int`.
 
 ## 📦 Installation
 
-Linux and macOS. The installer needs `python3`.
-
-### Automatic (Recommended)
+Linux and macOS. The installer uses `python3` to edit Zed's JSON files; the runner itself only needs `bash`.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
 ```
 
-### Read it first
+To read it first:
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh
@@ -60,189 +90,114 @@ less install.sh
 bash install.sh
 ```
 
+Options (from the web, put them after `bash -s --`, for example `curl ... | bash -s -- --key f9`):
+
+| Option        | Does                                                                |
+| ------------- | ------------------------------------------------------------------- |
+| `--key KEY`   | use another key for Run File, for example `--key f9`               |
+| `--update`    | download the latest version and install it                          |
+| `--uninstall` | remove what the installer added                                     |
+| `--doctor`    | show which language runtimes are installed                          |
+
 ### What the installer changes
 
-In `~/.config/zed/` (or `$XDG_CONFIG_HOME/zed/` on Linux) it:
+In `~/.config/zed/` (`$XDG_CONFIG_HOME/zed/` on Linux):
 
-- writes `runner.sh` (picks and runs the command) and `run_code.py` (starts it from the Zed task); both are replaced on every update
-- creates `runner.custom.sh` for your own commands, only if it doesn't exist yet
-- adds a "Run File" task to `tasks.json` and a `ctrl-r` / `cmd-r` binding to `keymap.json`, keeping your existing entries and comments; a backup (`*.backup.<timestamp>`) is saved before either file is changed
+- `code-runner/runner.sh` and `code-runner/install.sh`: replaced on every update
+- `code-runner/custom.sh`: your own commands, created once and never overwritten
+- `tasks.json`: adds four tasks (Run File, Run File (debug), Run Selection, Code Runner: Doctor) and updates them on later installs
+- `keymap.json`: adds `ctrl-r` / `cmd-r` → Run File in the editor
 
-Running it again is safe: entries that are already there are left alone.
+Everything else in `tasks.json` and `keymap.json` stays as it is, comments included, and a backup (`*.backup.<timestamp>`) is saved before either file changes. If the key is already bound in your keymap, your binding is kept and the installer suggests `--key`. If a file can't be read (invalid JSON), it's left alone and the installer prints what to add.
 
-If `ctrl-r` / `cmd-r` is already bound in your keymap, the installer keeps your binding and prints the entry to add with another key. If it can't read one of the files (for example, invalid JSON), it leaves the file alone and prints the entry to add yourself. The entries look like this:
+Version 1 installs (`runner.sh`, `run_code.py` and `runner.custom.sh` directly in `~/.config/zed/`) are moved over automatically, including your custom commands.
 
-`tasks.json` (command palette → `zed: open tasks`):
-
-```json
-{
-  "label": "Run File",
-  "command": "python3 \"/home/you/.config/zed/run_code.py\" \"$ZED_FILE\"",
-  "use_new_terminal": false,
-  "allow_concurrent_runs": true,
-  "reveal": "always",
-  "tags": ["code-runner-run"]
-}
-```
-
-`keymap.json` (command palette → `zed: open keymap file`):
-
-```json
-{
-  "context": "Editor",
-  "bindings": {
-    "ctrl-r": ["task::Spawn", { "task_name": "Run File" }]
-  }
-}
-```
-
-## 🎯 Usage
-
-1. Open any supported code file in Zed
-2. Press `Ctrl+R` (Linux) or `Cmd+R` (Mac)
-3. The code runs in the integrated terminal, where you can also type input
-
-### Example
-
-```bash
-echo 'print("Hello, World!")' > test.py
-zed test.py
-# Press Ctrl+R → Hello, World!
-```
-
-**C++**:
-
-```bash
-cat > test.cpp << 'EOF'
-#include <iostream>
-int main() {
-    std::cout << "Hello from C++!" << std::endl;
-    return 0;
-}
-EOF
-zed test.cpp
-# Press Ctrl+R
-```
-
-## 🔧 How It Works
-
-1. Zed's "Run File" task passes the current file to `run_code.py`, which starts `runner.sh`
-2. `runner.sh` first checks your `runner.custom.sh`, then the built-in languages, matching on the file extension
-3. Compiled languages (C, C++, Rust) are built into a temporary folder, run from there, and the folder is removed afterwards, even when the program fails or you press `Ctrl+C`
-4. The result line shows ✅ or ❌ with the exit code, and the task exits with the program's exit code
-
-## 📝 Requirements
-
-`python3` for the runner itself, plus the runtime for each language you use:
-
-```bash
-python3 --version   # Python (and the runner)
-node --version      # JavaScript
-npm install -g ts-node   # TypeScript
-dart --version      # Dart
-java --version      # Java 11+
-go version          # Go
-ruby --version      # Ruby
-g++ --version       # C++
-gcc --version       # C
-dotnet --version    # C# (.NET 10+ for single files without a project)
-php --version       # PHP
-rustc --version     # Rust
-```
-
-A missing runtime is reported with a hint on how to install it.
+`Ctrl+R` replaces Zed's Open Recent shortcut inside the editor; Open Recent is still on `Ctrl+Alt+O`. On Mac, `Cmd+R` replaces Toggle Right Dock in the editor.
 
 ## 🎨 Customization
 
 ### Your own commands
 
-Edit `~/.config/zed/runner.custom.sh`. It's read before the built-in languages, so you can add new ones or change existing ones, and updates never overwrite it:
+Edit `~/.config/zed/code-runner/custom.sh`. It's read before the built-in languages, so it can add new languages or change existing ones:
 
 ```bash
 case "$FILE" in
-    *.py)  run python "$FILE" ;;                       # change a built-in
-    *.zig) run zig run "$FILE" ;;                      # add a language
-    *.c)   build_and_run clang "$FILE" -o "$BIN" -O2 ;; # compile to $BIN, then run it
+    *.py)  run python "$FILE" ;;                         # change a built-in
+    *.hs)  run runghc "$FILE" ;;                         # add a language
+    *.c)   build_and_run clang "$FILE" -o "$BIN" -O2 ;;  # compile to $BIN, then run it
     *) ;;
 esac
 ```
 
-Available helpers: `run CMD...`, `build_and_run CMD...` (the compiler must write `"$BIN"`), `need CMD "install hint"` and `say "text"`. Available variables: `$FILE` (absolute path), `$DIR`, `$FILENAME`, `$STEM` and `$BIN`.
+| Helper                | Does                                                              |
+| --------------------- | ----------------------------------------------------------------- |
+| `run CMD...`          | runs the program (with `NAME.in` as input when it exists)        |
+| `build_and_run CMD...`| compiles with `CMD`, which must write `"$BIN"`, then runs `"$BIN"` |
+| `compile CMD...`      | compiles only, with the warning count; stops on errors            |
+| `need CMD "hint"`     | stops with the hint when `CMD` isn't installed                    |
+| `say "text"`          | prints `>>> text`                                                 |
 
-### Change the keybinding
+Variables: `$FILE` (absolute path), `$DIR` (its folder, also the working directory), `$FILENAME`, `$STEM`, `$BIN` (where to put a compiled program) and `$MODE` (`run`, `debug` or `selection`).
 
-In `~/.config/zed/keymap.json`, change the key in the "Run File" entry:
+### Another key
 
-```json
-{
-  "context": "Editor",
-  "bindings": {
-    "f5": ["task::Spawn", { "task_name": "Run File" }]
-  }
-}
+```bash
+bash ~/.config/zed/code-runner/install.sh --key f9
 ```
 
 ## 🐛 Troubleshooting
 
-### The key does nothing
+**The key does nothing.** Open the task list and pick Run File. If that works, the key is the problem: look for conflicts in the keymap editor (`Ctrl+K Ctrl+S` / `Cmd+K Cmd+S`) or pick another key with `--key`. If it doesn't, check `tasks.json` for invalid JSON. Restarting Zed once can help after the first install.
 
-1. Run it from the command palette: `Ctrl/Cmd+Shift+P` → "task: spawn" → "Run File". If that works, the keybinding is the problem; otherwise, the task is.
-2. Check `~/.config/zed/tasks.json` and `keymap.json` for invalid JSON
-3. Look for conflicts in the keymap editor (`Ctrl+K Ctrl+S`, or `Cmd+K Cmd+S` on Mac), or try another key such as `F5`
-4. Restart Zed once
+**Command not found.** Run **Code Runner: Doctor** to see what's installed and on your `PATH`.
 
-### Command not found
-
-Make sure the runtime is installed and on your `PATH`:
+**Too many compiler warnings.** They often point at real bugs, which is why they stay on. To turn them off for C++, override it in `custom.sh`:
 
 ```bash
-which python3
-which node
+*.cpp) build_and_run g++ "$FILE" -o "$BIN" -O2 -std=c++20 ;;
 ```
 
-### Test without Zed
+**Test without Zed:**
 
 ```bash
-python3 ~/.config/zed/run_code.py test.py
+bash ~/.config/zed/code-runner/runner.sh path/to/file.py
 ```
 
 ## 🔄 Updating
 
-Run the installer again. Your `runner.custom.sh` and your other tasks and keybindings are kept.
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Sothcheat/zed-code-runner/main/install.sh | bash
+bash ~/.config/zed/code-runner/install.sh --update
 ```
+
+Your `custom.sh`, other tasks and keybindings are kept.
 
 ## 🗑️ Uninstalling
 
 ```bash
-rm ~/.config/zed/runner.sh ~/.config/zed/run_code.py ~/.config/zed/runner.custom.sh
+bash ~/.config/zed/code-runner/install.sh --uninstall
 ```
 
-Then remove the "Run File" entry from `~/.config/zed/tasks.json` and the `ctrl-r` / `cmd-r` "Run File" binding from `~/.config/zed/keymap.json`. Leave the rest of both files as they are.
+This removes the tasks, the keybinding and the runner. Your `custom.sh` stays in `~/.config/zed/code-runner/`; delete it if you don't need it.
 
-## ❓ Why Not a Zed Extension?
+## ❓ Why not a Zed extension?
 
-Zed extensions can't change your user configuration (tasks and keybindings), so a small installer does it instead:
+Zed extensions can add languages, themes, snippets, debuggers, language servers and MCP servers, but not tasks or keybindings for the languages Zed already ships, and they can't change your settings. Running files is done with Zed's own [tasks](https://zed.dev/docs/tasks), and this project installs and maintains them for you. If Zed's extension API gains tasks, this can become an extension.
 
-- ✅ Works immediately
-- ✅ No Rust compilation needed
-- ✅ Easy to update
-- ✅ Fully transparent (you see exactly what's installed)
+## 🧪 Development
+
+```bash
+bash tests/smoke.sh
+```
+
+installs into a temporary folder, runs a small program in every installed language, and checks the installer's edits. CI runs it on Linux and macOS (bash 3.2) together with ShellCheck.
 
 ## 🤝 Contributing
 
-Contributions welcome! Feel free to:
-
-- Add support for more languages
-- Improve error messages
-- Enhance the installer script
-- Fix bugs
+Contributions welcome: more languages, better messages, bug fixes. Please run `bash tests/smoke.sh` before opening a pull request.
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file
+MIT License, see [LICENSE](LICENSE).
 
 ## 🙏 Acknowledgments
 
@@ -250,8 +205,4 @@ Inspired by VS Code's [Code Runner](https://marketplace.visualstudio.com/items?i
 
 ## 📧 Support
 
-- **Issues**: [GitHub Issues](https://github.com/Sothcheat/zed-code-runner/issues)
-
----
-
-**Made with ❤️ for Zed users who want a simple, fast code runner**
+[GitHub Issues](https://github.com/Sothcheat/zed-code-runner/issues)
